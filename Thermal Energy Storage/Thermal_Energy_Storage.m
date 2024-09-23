@@ -126,9 +126,6 @@ for k = 2:nt
     % ihxS_inlet(1) =  (WC_ihxS / rhoCA_ihxS * dt / dx_ihx) * 326;
     T_hxS(:, k) = A8 * T_hxS(:, k-1) + hxS_inlet + h_hxS * dt / rhoCA_hxS .* (T_hxTube(:, k-1) - T_hxS(:, k-1));
 
-    % TES tank temperature update
-    
-
     % SG temperature update
     % ihxP_inlet(nx_ihx) = - (WC_ihxP / rhoCA_ihxP * dt / dx_ihx) * T_hotPool(nx_hotPool, k-1);
     T_sgP(:, k) = A7 * T_sgP(:, k-1) + sgP_inlet + h_sgP * dt / rhoCA_sgP .* (T_sgTube(:, k-1) - T_sgP(:, k-1));
