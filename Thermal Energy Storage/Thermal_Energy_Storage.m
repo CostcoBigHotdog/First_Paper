@@ -29,7 +29,7 @@ C_steam = 4.51;
 A_sg = 4995e4;
 
 %% Initial conditions
-% TES
+% TES heat exchanger
 T_hxP = zeros(nx_hx, nt);
 T_hxP(:, 1) = linspace(326, 478, nx_hx);
 T_hxTube = zeros(nx_hx, nt);
@@ -37,6 +37,7 @@ T_hxTube(:, 1) = linspace(310, 429, nx_hx);
 T_hxS = zeros(nx_hx, nt);
 T_hxS(:, 1) = linspace(295, 380, nx_hx);
 
+% TES tanks
 L_hotTank = zeros(1, nt);   % height
 L_hotTank(1,1) = 0.5e2;
 L_coldTank = zeros(1, nt);
@@ -102,12 +103,12 @@ rhoA_sgS = W_sgS / 2000;
 h_sgP = 1 * A_sg  * 10e-2;
 h_sgS = 0.002 * A_sg * 10e-2;
 
-A7 =   (1 + (WC_sgP / rhoCA_sgP * dt / dx_sg)) * eye(nx_sg) ...
+A9 =   (1 + (WC_sgP / rhoCA_sgP * dt / dx_sg)) * eye(nx_sg) ...
      - (WC_sgP / rhoCA_sgP * dt / dx_sg) * diag(ones(nx_sg-1, 1), 1);
 sgP_inlet = zeros(nx_sg, 1);
 sgP_inlet(nx_sg) = - (WC_sgP / rhoCA_sgP * dt / dx_sg) * 380;
 
-A8 =   (1 - (W_sgS / rhoA_sgS * dt / dx_sg)) * eye(nx_sg) ...
+A10 =   (1 - (W_sgS / rhoA_sgS * dt / dx_sg)) * eye(nx_sg) ...
      + (W_sgS / rhoA_sgS * dt / dx_sg) * diag(ones(nx_sg -1, 1), -1);
 sgS_inlet = zeros(nx_sg, 1);
 sgS_inlet(1) = (W_sgS / rhoA_sgS * dt / dx_sg) * 1014;
@@ -119,20 +120,27 @@ tic;
 for k = 2:nt
     
     % TES hx temperature update
-    % ihxP_inlet(nx_ihx) = - (WC_ihxP / rhoCA_ihxP * dt / dx_ihx) * T_hotPool(nx_hotPool, k-1);
     T_hxP(:, k) = A7 * T_hxP(:, k-1) + hxP_inlet + h_hxP * dt / rhoCA_hxP .* (T_hxTube(:, k-1) - T_hxP(:, k-1));
     T_hxTube(:, k) = T_hxTube(:, k -1) + h_hxP * dt / rhoCA_hxTube .* (T_hxP(:, k-1) - T_hxTube(:, k-1))...
                                    + h_hxS * dt / rhoCA_hxTube .* (T_hxS(:, k-1) - T_hxTube(:, k-1));
-    % ihxS_inlet(1) =  (WC_ihxS / rhoCA_ihxS * dt / dx_ihx) * 326;
     T_hxS(:, k) = A8 * T_hxS(:, k-1) + hxS_inlet + h_hxS * dt / rhoCA_hxS .* (T_hxTube(:, k-1) - T_hxS(:, k-1));
 
+    % Tank temperature update
+    T_hotTankIn = T_hxS(nx_hx , k-1);
+    M_hotTank(1, k) = M_hotTank(1, k-1) + dt * (WC_hxS + WC_sgP);
+    T_hotTank(1, k) = M_hotTank(1, k-1) / M_hotTank(1, k) * T_hotTank(1, k-1) ...
+                      + dt / M_hotTank(1, k) / C_ms * (WC_hxS * T_hotTankIn + WC_sgP * T_hotTank(1, k-1));
+    T_coldTankIn = T_sgP(1 , k-1);
+    M_coldTank(1, k) = M_coldTank(1, k-1) + dt * (-WC_sgP - WC_hxS );
+    T_coldTank(1, k) = M_coldTank(1, k-1) / M_coldTank(1, k) * T_coldTank(1, k-1) ...
+                      + dt / M_coldTank(1, k) / C_ms * (WC_hxS * T_coldTankIn + WC_sgP * T_coldTank(1, k-1));
+
+
     % SG temperature update
-    % ihxP_inlet(nx_ihx) = - (WC_ihxP / rhoCA_ihxP * dt / dx_ihx) * T_hotPool(nx_hotPool, k-1);
-    T_sgP(:, k) = A7 * T_sgP(:, k-1) + sgP_inlet + h_sgP * dt / rhoCA_sgP .* (T_sgTube(:, k-1) - T_sgP(:, k-1));
+    T_sgP(:, k) = A9 * T_sgP(:, k-1) + sgP_inlet + h_sgP * dt / rhoCA_sgP .* (T_sgTube(:, k-1) - T_sgP(:, k-1));
     T_sgTube(:, k) = T_sgTube(:, k -1) + h_sgP * dt / rhoCA_sgTube .* (T_sgP(:, k-1) - T_sgTube(:, k-1))...
                                        + h_sgS * dt / rhoCA_sgTube .* (T_sgS(:, k-1) - T_sgTube(:, k-1));
-    H_sgS(:, k) = A8 * H_sgS(:, k-1) + sgS_inlet + h_sgS * dt / rhoA_sgS .* (T_sgTube(:, k-1) - T_sgS(:, k-1));
-    % T_sgS(:, k) = region1(H_sgS(:, k), nx_sg);
+    H_sgS(:, k) = A10 * H_sgS(:, k-1) + sgS_inlet + h_sgS * dt / rhoA_sgS .* (T_sgTube(:, k-1) - T_sgS(:, k-1));
     for i = 1:nx_sg
         if H_sgS(i, k) < 1228.95
             T_sgS(i, k) = 235 + (H_sgS(i, k) - 1014) / C_water;
