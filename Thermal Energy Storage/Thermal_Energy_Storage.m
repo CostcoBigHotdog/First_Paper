@@ -119,13 +119,14 @@ tic;
 % Time stepping using the backward Euler method
 for k = 2:nt
     
-    % TES hx temperature update
+    % TES HX temperature update
     T_hxP(:, k) = A7 * T_hxP(:, k-1) + hxP_inlet + h_hxP * dt / rhoCA_hxP .* (T_hxTube(:, k-1) - T_hxP(:, k-1));
     T_hxTube(:, k) = T_hxTube(:, k -1) + h_hxP * dt / rhoCA_hxTube .* (T_hxP(:, k-1) - T_hxTube(:, k-1))...
                                    + h_hxS * dt / rhoCA_hxTube .* (T_hxS(:, k-1) - T_hxTube(:, k-1));
+    hxS_inlet(1) = (WC_hxS / rhoCA_hxS * dt / dx_hx) * T_coldTank(1, k-1);
     T_hxS(:, k) = A8 * T_hxS(:, k-1) + hxS_inlet + h_hxS * dt / rhoCA_hxS .* (T_hxTube(:, k-1) - T_hxS(:, k-1));
 
-    % Tank temperature update
+    % TES Tank temperature update
     T_hotTankIn = T_hxS(nx_hx , k-1);
     M_hotTank(1, k) = M_hotTank(1, k-1) + dt * (WC_hxS + WC_sgP);
     T_hotTank(1, k) = M_hotTank(1, k-1) / M_hotTank(1, k) * T_hotTank(1, k-1) ...
@@ -137,6 +138,7 @@ for k = 2:nt
 
 
     % SG temperature update
+    sgP_inlet(nx_sg) = - (WC_sgP / rhoCA_sgP * dt / dx_sg) * T_hotTank(1, k-1);
     T_sgP(:, k) = A9 * T_sgP(:, k-1) + sgP_inlet + h_sgP * dt / rhoCA_sgP .* (T_sgTube(:, k-1) - T_sgP(:, k-1));
     T_sgTube(:, k) = T_sgTube(:, k -1) + h_sgP * dt / rhoCA_sgTube .* (T_sgP(:, k-1) - T_sgTube(:, k-1))...
                                        + h_sgS * dt / rhoCA_sgTube .* (T_sgS(:, k-1) - T_sgTube(:, k-1));
