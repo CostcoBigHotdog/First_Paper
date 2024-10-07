@@ -153,7 +153,8 @@ for k = 2:nt
         end
     end
 
-
+    % Turbine output
+    P_electrical = 0.6521 * W_sgS * (H_sgS(nx_sg, k) - 1.815e3);
   
 end
 % Stop timing
